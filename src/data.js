@@ -1,8 +1,26 @@
 // data.js
+
 const fs = require('fs');
 const path = require('path');
 
-let data_worldList = [];
+// WorldThumbnail structure
+class WorldThumbnail {
+    constructor() {
+        this.buffer = new Array(16 * 16).fill(0); // Initialize buffer
+    }
+}
+
+// WorldListItem structure
+class WorldListItem {
+    constructor(name) {
+        this.thumbnail = new WorldThumbnail();
+        this.name = name;
+        this.next = null; // Pointer to next item
+    }
+}
+
+// Global variables
+let data_worldList = null; // Linked list head
 let data_worldListLength = 0;
 
 const directoryName = path.join(process.env.HOME || process.env.APPDATA, '.m4kc');
@@ -13,9 +31,9 @@ const screenshotsDirectoryName = path.join(directoryName, 'screenshots');
 // Initialize data module
 function data_init() {
     try {
-        ensureDirectoryExists(directoryName);
-        ensureDirectoryExists(worldsDirectoryName);
-        ensureDirectoryExists(screenshotsDirectoryName);
+        data_ensureDirectoryExists(directoryName);
+        data_ensureDirectoryExists(worldsDirectoryName);
+        data_ensureDirectoryExists(screenshotsDirectoryName);
     } catch (error) {
         return 1; // Non-zero on failure
     }
@@ -65,6 +83,16 @@ function data_getWorldPath(worldName) {
     return path.join(worldsDirectoryName, worldName);
 }
 
+// Get world metadata path
+function data_getWorldMetaPath(worldPath) {
+    return path.join(worldPath, 'metadata');
+}
+
+// Get player file path
+function data_getWorldPlayerPath(worldPath, playerName) {
+    return path.join(worldPath, `${playerName}.player`);
+}
+
 // Get screenshot path
 function data_getScreenshotPath() {
     data_ensureDirectoryExists(screenshotsDirectoryName);
@@ -74,27 +102,45 @@ function data_getScreenshotPath() {
 
 // Refresh world list
 function data_refreshWorldList() {
-    data_worldList = [];
+    data_worldList = null; // Reset list
     data_worldListLength = 0;
-    
+
     if (!data_directoryExists(worldsDirectoryName)) return 1;
 
     const files = fs.readdirSync(worldsDirectoryName);
+    let lastItem = null;
+
     for (const file of files) {
         if (file.startsWith('.')) continue;
 
-        const worldPath = path.join(worldsDirectoryName, file);
-        const item = { name: file, thumbnail: null }; // Add thumbnail logic as needed
-        data_worldList.push(item);
+        const item = new WorldListItem(file);
+        if (!data_worldList) {
+            data_worldList = item; // First item
+        } else {
+            lastItem.next = item; // Link to the next item
+        }
+        lastItem = item;
+
+        // Logic for loading thumbnail can go here
+        // item.thumbnail could be populated if you have a way to load it
         data_worldListLength++;
     }
     return 0;
 }
 
+// Exporting the global variables and functions
 module.exports = {
+    data_worldList,
+    data_worldListLength,
     data_init,
+    data_directoryExists,
+    data_fileExists,
+    data_ensureDirectoryExists,
+    data_removeDirectory,
     data_getOptionsFileName,
     data_getWorldPath,
+    data_getWorldMetaPath,
+    data_getWorldPlayerPath,
     data_getScreenshotPath,
     data_refreshWorldList,
 };
